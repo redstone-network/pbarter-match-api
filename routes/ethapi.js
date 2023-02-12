@@ -46,4 +46,21 @@ router.post("/match/:oid1/:oid2", async function (req, res) {
   res.end();
 });
 
+router.get("/triger_match", async function (req, res) {
+  console.log("###in triger_match");
+  // let oids = await contract.getoid();
+  // console.log("#####oids ", oids);
+
+  //get order info
+
+  //count match oids pair
+
+  //send match oids pair tx
+
+  res.send("ok");
+
+  res.end();
+});
+
+
 module.exports = router;
