@@ -5,7 +5,7 @@ require('dotenv').config();
 const ethers = require('ethers'); // Load Ethers library
 const SampleToken = require("../Barter.json");
 
-const SampleTokenAddress = "0xDAAe46e4B58cd6E1a892F51262CC3421034fF30B";
+const SampleTokenAddress = "0x12609b58Fb6cd5bC0A4771658d8EC17722Af69b0";
 const providerURL = 'https://rpc.api.moonbase.moonbeam.network';
 // Define provider
 const provider = new ethers.JsonRpcProvider(providerURL);
@@ -17,49 +17,80 @@ let walletSigner = new ethers.Wallet(signerPrivateKey, provider);
 const readWriteContract = new ethers.Contract(SampleTokenAddress, SampleToken.abi, walletSigner);
 
 async function sendMatch(arr) {
-  // account private key, provider
-  console.log(`arr: ${arr}`);
-  //const transaction = await readWriteContract.submit_match(arr);
-  const transaction = await readWriteContract.store(arr[0]);
+  console.log(`sendMatch arr: ${arr}`);
+  const transaction = await readWriteContract.autoMatchOrder(arr);
   await transaction.wait();
-  console.log("sendtx successfully ");
+  console.log("sendMatch sendtx successfully ");
 }
 
+async function getUnFinishedOrders() {
+  const oids = await readWriteContract.unFinishedOrders();
+  let new_oids = [];
+  for (let index = 0; index < oids.length; index++) {
+    new_oids.push(oids[index]);
+  }
 
-router.get("/orders", async function (req, res) {
-  let oids = await contract.getoid();
-  console.log("#####oids ", oids);
+  const orders = await readWriteContract.getFilterOrders(new_oids);
+  return orders;
+}
 
-  res.send(oids.toString());
+// Submit results directly
+// router.post("/match/:oid1/:oid2", async function (req, res) {
+//   //parse
+//   const params = req.params;
+//   await sendMatch([params.oid1, params.oid2])
 
-  res.end();
-});
+//   res.send("ok");
 
+//   res.end();
+// });
 
-router.post("/match/:oid1/:oid2", async function (req, res) {
-  //parse
-  const params = req.params;
-  await sendMatch([params.oid1, params.oid2])
+function equar(a, b) {
+  if (a.length !== b.length) {
+      return false
+  } else {
+      for (let i = 0; i < a.length; i++) {
+          if (a[i] !== b[i]) {
+              return false
+          }
+      }
+      return true;
+  }
+}
 
-  res.send("ok");
-
-  res.end();
-});
-
-router.get("/triger_match", async function (req, res) {
-  console.log("###in triger_match");
-  // let oids = await contract.getoid();
-  // console.log("#####oids ", oids);
-
+router.get("/triger_match", async function (req, res, next) {
   //get order info
+  try {
+    let orders = await getUnFinishedOrders();
+    for (let i = 0; i < orders.length; i++) {
+      for (let j = 0; j < orders.length; j++) {
+        if (i === j) {
+          continue;
+        }
+        const a = orders[i];
+        const b = orders[j];
 
-  //count match oids pair
+        console.log("#in count match", a, b);
+        //count match oids pair
+        if (
+          a.base_address == b.target_address
+          &&
+          equar(a.base_nfts, b.target_nfts)
+          &&
+          equar(a.base_snfts, b.target_snfts)
+        ) {
+          //send match oids pair tx
+          console.log("#in send match", a.order_index, b.order_index);
+          await sendMatch([a.order_index.toString(), b.order_index.toString()]);
+        }
+      }
+    }
+    res.send("ok");
+    res.end();
+  } catch (err) {
+    next(err)
+  }
 
-  //send match oids pair tx
-
-  res.send("ok");
-
-  res.end();
 });
 
 
